@@ -1,3 +1,4 @@
+using System.IO;
 namespace ScrollVideoPlayer.Models;
 
 public sealed class VideoEntry
