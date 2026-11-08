@@ -69,7 +69,7 @@ Requirements:
 - .NET 9 SDK (or newer)
 - Internet access during the first build, so NuGet can restore the VLC and LibVLCSharp packages
 
-Run `Build-Portable.bat` from the repository root. It publishes a self-contained build to `dist\ScrollVideoPlayer`.
+Run `Build-Portable.bat` from the repository root. It publishes a self-contained build to `dist\ScrollVideoPlayer`. Run `dist\ScrollVideoPlayer\Run-Portable.bat` to start it. The repository-root `Run-Portable.bat` also detects and starts the build in `dist\ScrollVideoPlayer`.
 
 The publish step used by CI is:
 
