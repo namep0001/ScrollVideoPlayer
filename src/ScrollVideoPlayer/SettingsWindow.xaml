@@ -1,0 +1,79 @@
+<Window x:Class="ScrollVideoPlayer.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Scroll Video Player Settings"
+        Width="590" Height="640" MinWidth="540" MinHeight="580"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResize"
+        Background="#10141E"
+        Foreground="#F2F4F8">
+    <Grid Margin="22">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,18">
+            <TextBlock Text="Settings" FontSize="25" FontWeight="Bold" />
+            <TextBlock Text="Control how folders are loaded and how swipe-to-delete behaves."
+                       Foreground="#A9B3C5" FontSize="12" Margin="0,6,0,0" />
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <TextBlock Text="VIDEO LIBRARY" Foreground="#AFA8FF" FontWeight="Bold"
+                           FontSize="11" Margin="0,0,0,8" />
+                <CheckBox x:Name="IncludeSubfoldersCheck" Content="Include videos in subfolders"
+                          Margin="0,7" />
+                <CheckBox x:Name="RememberFolderCheck" Content="Remember the last opened folder and video"
+                          Margin="0,7" />
+                <StackPanel Margin="0,8,0,16">
+                    <TextBlock Text="Video order" Foreground="#C6CEDC" FontSize="12" Margin="0,0,0,6" />
+                    <ComboBox x:Name="SortModeBox" SelectedIndex="0" Width="245"
+                              HorizontalAlignment="Left">
+                        <ComboBoxItem Content="Name (natural order)" />
+                        <ComboBoxItem Content="Newest first" />
+                        <ComboBoxItem Content="Oldest first" />
+                    </ComboBox>
+                </StackPanel>
+
+                <Separator Background="#30394A" Margin="0,4,0,16" />
+                <TextBlock Text="PLAYBACK" Foreground="#AFA8FF" FontWeight="Bold"
+                           FontSize="11" Margin="0,0,0,8" />
+                <CheckBox x:Name="AutoPlayNextCheck" Content="Automatically play the next video when one ends"
+                          Margin="0,7" />
+                <CheckBox x:Name="LoopPlaylistCheck" Content="Loop the folder queue"
+                          Margin="0,7" />
+                <CheckBox x:Name="ShuffleCheck" Content="Shuffle when moving to the next video"
+                          Margin="0,7" />
+
+                <Separator Background="#30394A" Margin="0,12,0,16" />
+                <TextBlock Text="DELETE BEHAVIOUR" Foreground="#AFA8FF" FontWeight="Bold"
+                           FontSize="11" Margin="0,0,0,8" />
+                <TextBlock Text="When you swipe a video to the left or press Delete:"
+                           Foreground="#C6CEDC" FontSize="12" Margin="0,0,0,7" />
+                <ComboBox x:Name="DeleteModeBox" SelectedIndex="0" Width="285"
+                          HorizontalAlignment="Left">
+                    <ComboBoxItem Content="Move to Windows Recycle Bin (recommended)" />
+                    <ComboBoxItem Content="Permanently delete file" />
+                </ComboBox>
+                <CheckBox x:Name="ConfirmDeleteCheck"
+                          Content="Ask for confirmation before deleting each video"
+                          Margin="0,12,0,7" />
+                <Border Background="#202634" BorderBrush="#3B465B" BorderThickness="1"
+                        CornerRadius="9" Padding="12" Margin="0,7,0,12">
+                    <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="#AEB8C9"
+                               Text="Swipe left deletes the current video from disk. The Recycle Bin option allows you to restore it from Windows. Permanent deletion cannot be undone." />
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right"
+                    Margin="0,17,0,0">
+            <Button Content="Cancel" Width="92" Click="Cancel_Click" />
+            <Button Content="Save settings" Width="126" Style="{StaticResource AccentButton}"
+                    Click="Save_Click" />
+        </StackPanel>
+    </Grid>
+</Window>

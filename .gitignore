@@ -1,0 +1,15 @@
+# Visual Studio / .NET
+.vs/
+**/bin/
+**/obj/
+*.user
+*.suo
+*.cache
+
+# Build outputs
+dist/
+publish/
+artifacts/
+
+# Local app data
+settings.json
