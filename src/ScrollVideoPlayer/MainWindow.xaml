@@ -6,12 +6,16 @@
         Width="1280" Height="820" MinWidth="820" MinHeight="600"
         WindowStartupLocation="CenterScreen"
         Background="#080A0F"
+        AllowDrop="True"
+        PreviewDragOver="Window_PreviewDragOver"
+        PreviewDrop="Window_PreviewDrop"
         PreviewKeyDown="Window_PreviewKeyDown"
         Loaded="Window_Loaded"
         Closing="Window_Closing">
     <Grid Background="#080A0F">
-        <vlc:VideoView x:Name="VideoSurface">
+        <vlc:VideoView x:Name="VideoSurface" AllowDrop="True">
             <Grid x:Name="OverlayRoot"
+                  AllowDrop="True"
                   Background="Transparent"
                   PreviewMouseLeftButtonDown="Overlay_MouseLeftButtonDown"
                   PreviewMouseLeftButtonUp="Overlay_MouseLeftButtonUp"
@@ -79,7 +83,7 @@
                             <TextBlock Text="Your videos, one after another"
                                        FontSize="23" FontWeight="Bold" TextAlignment="Center"
                                        TextWrapping="Wrap" />
-                            <TextBlock Text="Open a folder to start an uninterrupted video feed. Scroll up for the next clip, or swipe left to remove the current one."
+                            <TextBlock Text="Open a folder, or drag video files into the player. Scroll down for the next clip, or swipe left to remove the current one."
                                        Margin="0,10,0,20" FontSize="13" Foreground="#AEB7C8"
                                        TextAlignment="Center" TextWrapping="Wrap" LineHeight="21" />
                             <Button Content="Choose video folder" Style="{StaticResource AccentButton}"
@@ -126,7 +130,7 @@
                                 </ListBox.ItemTemplate>
                             </ListBox>
                             <TextBlock x:Name="PlaylistFooter" Grid.Row="2"
-                                       Text="Scroll ↑ next  ·  Swipe ← delete"
+                                       Text="Scroll ↓ next  ·  Swipe ← delete"
                                        Margin="14,9,14,13" FontSize="10"
                                        Foreground="#8793A9" />
                         </Grid>
@@ -136,7 +140,7 @@
                             Margin="20,0,20,18" Padding="12,7" CornerRadius="20"
                             Background="#B90D111A" BorderBrush="#30394B" BorderThickness="1">
                         <TextBlock x:Name="StatusText"
-                                   Text="Scroll ↑ next video     ·     Swipe ← delete     ·     Space pause"
+                                   Text="Scroll ↓ next video     ·     Drag & drop videos to play     ·     Swipe ← delete     ·     Space pause"
                                    FontSize="11" Foreground="#D5DBE7" />
                     </Border>
                 </Grid>

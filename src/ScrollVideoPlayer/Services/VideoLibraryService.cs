@@ -38,6 +38,9 @@ public sealed class VideoLibraryService
             .ToList();
     }
 
+    public static bool IsSupportedVideoFile(string path) =>
+        SupportedExtensions.Contains(Path.GetExtension(path));
+
     private static IEnumerable<string> EnumerateVideoFiles(string rootFolder, bool recursive)
     {
         var pending = new Stack<string>();

@@ -5,9 +5,10 @@ A Windows desktop player built for browsing a folder as a continuous, swipe-driv
 ## Features
 
 - **Folder queue:** loads supported videos from one folder, with optional recursive subfolder scanning.
+- **Drag and drop:** drop one or more supported video files onto the player; the first starts immediately and the dropped files become the play queue.
 - **Automatic playback:** starts with the first video and advances to the next when a clip finishes.
 - **Natural filename order:** names such as `clip2` and `clip10` are sorted the way Windows Explorer users expect.
-- **Feed gestures:** scroll or swipe up for the next video, down for the previous video, and left to delete the current file.
+- **Feed gestures:** scroll down for the next video and up for the previous video; swipe up/down for next/previous and left to delete the current file.
 - **Safe deletion default:** deleted files are sent to the Windows Recycle Bin. Permanent deletion is an explicit setting.
 - **Player controls:** play/pause, timeline seeking, volume, mute, playback speed, audio tracks, subtitle tracks, aspect ratio, fullscreen and snapshots.
 - **Playlist panel:** inspect the loaded queue and jump directly to a clip.
@@ -29,8 +30,9 @@ Actual playback depends on the codecs and demuxers included with the VLC distrib
 
 | Action | Mouse | Touch | Keyboard |
 |---|---|---|---|
-| Next video | Mouse wheel up | Swipe up | Up arrow |
-| Previous video | Mouse wheel down | Swipe down | Down arrow |
+| Next video | Mouse wheel down | Swipe up | Up arrow |
+| Previous video | Mouse wheel up | Swipe down | Down arrow |
+| Play dropped videos | Drop video files onto the player | — | — |
 | Delete current video | Swipe left | Swipe left | Delete |
 | Play / pause | Player button | Player button | Space |
 | Seek backward / forward 5 seconds | Timeline | Timeline | Left / Right |

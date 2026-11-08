@@ -96,6 +96,65 @@ public partial class MainWindow : Window
             LoadFolder(dialog.FolderName);
     }
 
+    private void Window_PreviewDragOver(object sender, DragEventArgs e)
+    {
+        var canAcceptVideos = e.Data.GetDataPresent(DataFormats.FileDrop) &&
+            e.Data.GetData(DataFormats.FileDrop) is string[] paths &&
+            paths.Any(VideoLibraryService.IsSupportedVideoFile);
+
+        e.Effects = canAcceptVideos ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void Window_PreviewDrop(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetData(DataFormats.FileDrop) is string[] paths)
+            LoadDroppedVideos(paths);
+
+        e.Handled = true;
+    }
+
+    private void LoadDroppedVideos(IEnumerable<string> paths)
+    {
+        var droppedVideos = paths
+            .Where(File.Exists)
+            .Where(VideoLibraryService.IsSupportedVideoFile)
+            .Select(Path.GetFullPath)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(path => new VideoEntry
+            {
+                FullPath = path,
+                FileName = Path.GetFileName(path)
+            })
+            .ToList();
+
+        if (droppedVideos.Count == 0)
+        {
+            ShowStatus("No supported video files were found in the dropped items.");
+            return;
+        }
+
+        _videos.Clear();
+        foreach (var video in droppedVideos)
+            _videos.Add(video);
+
+        var firstFolder = Path.GetDirectoryName(droppedVideos[0].FullPath) ?? string.Empty;
+        var sameFolder = droppedVideos.All(video =>
+            string.Equals(Path.GetDirectoryName(video.FullPath), firstFolder, StringComparison.OrdinalIgnoreCase));
+
+        HeaderFolder.Text = sameFolder ? firstFolder : "Dropped videos";
+        if (!string.IsNullOrWhiteSpace(firstFolder))
+            _settings.LastFolder = firstFolder;
+
+        VideoCountText.Text = $"{_videos.Count} video{(_videos.Count == 1 ? string.Empty : "s")}";
+        PlaylistFooter.Text = $"{_videos.Count} items  ·  Scroll ↓ next  ·  Swipe ← delete";
+
+        PlayAt(0);
+        ShowStatus(droppedVideos.Count == 1
+            ? $"Playing dropped video: {droppedVideos[0].FileName}"
+            : $"Playing {droppedVideos[0].FileName} · {droppedVideos.Count} dropped videos in queue");
+    }
+
     private void LoadFolder(string folder, string? preferredVideo = null)
     {
         if (!Directory.Exists(folder))
@@ -110,7 +169,7 @@ public partial class MainWindow : Window
 
             HeaderFolder.Text = folder;
             VideoCountText.Text = $"{_videos.Count} video{(_videos.Count == 1 ? string.Empty : "s")}";
-            PlaylistFooter.Text = $"{_videos.Count} items  ·  Scroll ↑ next  ·  Swipe ← delete";
+            PlaylistFooter.Text = $"{_videos.Count} items  ·  Scroll ↓ next  ·  Swipe ← delete";
 
             _settings.LastFolder = folder;
             _settings.LastVideo = string.Empty;
@@ -129,7 +188,7 @@ public partial class MainWindow : Window
                 : _videos.ToList().FindIndex(v => string.Equals(v.FullPath, preferredVideo, StringComparison.OrdinalIgnoreCase));
 
             PlayAt(startIndex >= 0 ? startIndex : 0);
-            ShowStatus($"Loaded {_videos.Count} videos. Scroll up for next; swipe left to delete.");
+            ShowStatus($"Loaded {_videos.Count} videos. Scroll down for next; swipe left to delete.");
         }
         catch (Exception ex)
         {
@@ -759,9 +818,9 @@ public partial class MainWindow : Window
         if (IsInteractiveSource(e.OriginalSource))
             return;
 
-        if (e.Delta > 0)
+        if (e.Delta < 0)
             PlayNext();
-        else if (e.Delta < 0)
+        else if (e.Delta > 0)
             PlayPrevious();
 
         e.Handled = true;
