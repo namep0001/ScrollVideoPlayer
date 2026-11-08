@@ -13,6 +13,9 @@
         <vlc:VideoView x:Name="VideoSurface">
             <Grid x:Name="OverlayRoot"
                   Background="Transparent"
+                  PreviewMouseLeftButtonDown="Overlay_MouseLeftButtonDown"
+                  PreviewMouseLeftButtonUp="Overlay_MouseLeftButtonUp"
+                  PreviewMouseWheel="Overlay_MouseWheel"
                   TouchDown="Overlay_TouchDown"
                   TouchMove="Overlay_TouchMove"
                   TouchUp="Overlay_TouchUp">
