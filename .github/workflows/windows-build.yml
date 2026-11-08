@@ -39,10 +39,15 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path "dist/installer" | Out-Null
-          $compiler = "$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe"
+          $compiler = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
           if (-not (Test-Path $compiler)) { throw "Inno Setup compiler was not found." }
-          & $compiler "installer/ScrollVideoPlayer.iss"
-          if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed with exit code $LASTEXITCODE" }
+          Push-Location "installer"
+          try {
+            & $compiler "ScrollVideoPlayer.iss"
+            if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed with exit code $LASTEXITCODE" }
+          } finally {
+            Pop-Location
+          }
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4

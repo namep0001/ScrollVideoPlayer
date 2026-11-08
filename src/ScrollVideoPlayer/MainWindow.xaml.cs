@@ -141,6 +141,7 @@ public partial class MainWindow : Window
         try
         {
             _player.Stop();
+            _player.Media = null;
             _currentMedia?.Dispose();
             _player.SetRate(1.0f);
             _player.AspectRatio = null;
@@ -223,6 +224,8 @@ public partial class MainWindow : Window
     private void StopAndClearCurrentMedia()
     {
         _player?.Stop();
+        if (_player is not null)
+            _player.Media = null;
         _currentMedia?.Dispose();
         _currentMedia = null;
         _currentIndex = -1;
@@ -341,6 +344,8 @@ public partial class MainWindow : Window
 
         var oldIndex = _currentIndex;
         _player?.Stop();
+        if (_player is not null)
+            _player.Media = null;
         _currentMedia?.Dispose();
         _currentMedia = null;
 
@@ -669,6 +674,9 @@ public partial class MainWindow : Window
             return;
 
         _pointerDown = false;
+        if (IsInteractiveSource(e.OriginalSource))
+            return;
+
         ProcessSwipe(e.GetPosition(OverlayRoot));
     }
 
@@ -697,7 +705,8 @@ public partial class MainWindow : Window
             return;
 
         _pointerDown = false;
-        ProcessSwipe(e.GetTouchPoint(OverlayRoot).Position);
+        if (!IsInteractiveSource(e.OriginalSource))
+            ProcessSwipe(e.GetTouchPoint(OverlayRoot).Position);
         e.Handled = true;
     }
 
