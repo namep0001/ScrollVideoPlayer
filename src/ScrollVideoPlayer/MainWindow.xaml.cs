@@ -9,6 +9,7 @@ using System.Windows.Media.Media3D;
 using System.Windows.Input;
 using System.Windows.Threading;
 using LibVLCSharp.Shared;
+using MediaPlayer = LibVLCSharp.Shared.MediaPlayer;
 using LibVLCSharp.Shared.Structures;
 using Microsoft.VisualBasic.FileIO;
 using Microsoft.Win32;
