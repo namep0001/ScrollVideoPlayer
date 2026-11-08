@@ -18,7 +18,7 @@ if not defined SDK_MAJOR (
 )
 if %SDK_MAJOR% LSS 9 (
     echo This project requires the .NET 9 SDK or newer.
-    echo Installed SDK: 
+    echo Installed SDK:
     dotnet --version
     echo Download: https://dotnet.microsoft.com/download/dotnet/9.0
     pause
@@ -37,8 +37,21 @@ if errorlevel 1 (
     exit /b 1
 )
 
+if not exist "dist\ScrollVideoPlayer\ScrollVideoPlayer.exe" (
+    echo.
+    echo Publish completed, but ScrollVideoPlayer.exe was not found.
+    echo Check the files in dist\ScrollVideoPlayer and review the build output.
+    pause
+    exit /b 1
+)
+
 echo.
 echo Portable build created in:
 echo %CD%\dist\ScrollVideoPlayer
-echo Copy the complete folder to another Windows 10/11 PC or zip it.
+echo.
+echo To launch it now, run:
+echo %CD%\dist\ScrollVideoPlayer\Run-Portable.bat
+echo.
+echo The repository-root Run-Portable.bat also detects this build folder.
+echo Copy the complete dist\ScrollVideoPlayer folder to another Windows 10/11 PC.
 pause
