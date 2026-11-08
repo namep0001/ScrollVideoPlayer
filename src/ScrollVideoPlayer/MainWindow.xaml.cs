@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Runtime.InteropServices;
 using System.ComponentModel;
 using System.IO;
 using System.Windows;
@@ -6,6 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Media3D;
+using System.Windows.Interop;
 using System.Windows.Input;
 using System.Windows.Threading;
 using LibVLCSharp.Shared;
@@ -32,8 +34,12 @@ public partial class MainWindow : Window
     private bool _suppressSelection;
     private bool _updatingSeek;
     private bool _isSeeking;
-    private bool _pointerDown;
-    private Point _pointerStart;
+    private bool _touchGestureDown;
+    private Point _touchGestureStart;
+    private bool _mouseGestureDown;
+    private Point _mouseGestureStart;
+    private IntPtr _mouseHook = IntPtr.Zero;
+    private readonly LowLevelMouseProc _mouseHookCallback;
     private bool _isFullscreen;
     private WindowStyle _previousWindowStyle;
     private WindowState _previousWindowState;
@@ -41,6 +47,7 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
+        _mouseHookCallback = MouseHookCallback;
         InitializeComponent();
         _settings = _settingsService.Load();
         VideoList.ItemsSource = _videos;
@@ -59,11 +66,31 @@ public partial class MainWindow : Window
             VideoSurface.MediaPlayer = _player;
             _player.EndReached += Player_EndReached;
             _player.EncounteredError += Player_EncounteredError;
-            _player.Volume = Math.Clamp((int)VolumeSlider.Value, 0, 100);
+            var rememberedVolume = Math.Clamp(_settings.LastVolume, 0, 100);
+            VolumeSlider.Value = rememberedVolume;
+            _player.Volume = rememberedVolume;
+            _player.Mute = _settings.IsMuted;
+            MuteButton.Content = _settings.IsMuted ? "🔇" : "🔊";
+
+            InstallMouseHook();
             _uiTimer.Start();
 
-            if (_settings.RememberLastFolder && Directory.Exists(_settings.LastFolder))
-                LoadFolder(_settings.LastFolder, _settings.LastVideo);
+            if (_settings.RememberLastFolder &&
+                Directory.Exists(_settings.LastFolder) &&
+                File.Exists(_settings.LastVideo))
+            {
+                var choice = MessageBox.Show(
+                    this,
+                    $"Would you like to resume the last video?\n\n{Path.GetFileName(_settings.LastVideo)}\n\nYes: resume this video\nNo: choose a different folder\nCancel: open the player without loading videos",
+                    "Welcome back",
+                    MessageBoxButton.YesNoCancel,
+                    MessageBoxImage.Question);
+
+                if (choice == MessageBoxResult.Yes)
+                    LoadFolder(_settings.LastFolder, _settings.LastVideo);
+                else if (choice == MessageBoxResult.No)
+                    BrowseForFolder(Environment.GetFolderPath(Environment.SpecialFolder.MyVideos));
+            }
         }
         catch (Exception ex)
         {
@@ -78,14 +105,21 @@ public partial class MainWindow : Window
 
     private void OpenFolder_Click(object sender, RoutedEventArgs e)
     {
+        BrowseForFolder(_settings.LastFolder);
+    }
+
+    private void BrowseForFolder(string? initialFolder)
+    {
         var dialog = new OpenFolderDialog
         {
             Title = "Choose a folder containing videos",
             Multiselect = false
         };
 
-        if (Directory.Exists(_settings.LastFolder))
-            dialog.InitialDirectory = _settings.LastFolder;
+        if (!Directory.Exists(initialFolder))
+            initialFolder = Environment.GetFolderPath(Environment.SpecialFolder.MyVideos);
+        if (Directory.Exists(initialFolder))
+            dialog.InitialDirectory = initialFolder;
 
         if (dialog.ShowDialog(this) == true)
             LoadFolder(dialog.FolderName);
@@ -552,13 +586,20 @@ public partial class MainWindow : Window
             return;
 
         _player.Mute = !_player.Mute;
+        _settings.IsMuted = _player.Mute;
         MuteButton.Content = _player.Mute ? "🔇" : "🔊";
+        _settingsService.Save(_settings);
     }
 
     private void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (_player is not null)
-            _player.Volume = Math.Clamp((int)e.NewValue, 0, 100);
+        {
+            var volume = Math.Clamp((int)e.NewValue, 0, 100);
+            _player.Volume = volume;
+            _settings.LastVolume = volume;
+            _settingsService.Save(_settings);
+        }
     }
 
     private void SeekSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -657,57 +698,207 @@ public partial class MainWindow : Window
         }
     }
 
-    private void Overlay_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-    {
-        if (IsInteractiveSource(e.OriginalSource))
-        {
-            _pointerDown = false;
-            return;
-        }
+    // VLC's WPF VideoView renders through a native child HWND. Mouse input over
+    // that surface can bypass ordinary WPF routed events. A low-level mouse hook
+    // lets this window recognise feed gestures over the video and its overlays.
+    private const int WhMouseLl = 14;
+    private const int WmLButtonDown = 0x0201;
+    private const int WmLButtonUp = 0x0202;
+    private const int WmMouseWheel = 0x020A;
+    private const uint GaRootOwner = 3;
 
-        _pointerStart = e.GetPosition(OverlayRoot);
-        _pointerDown = true;
+    private delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativePoint
+    {
+        public int X;
+        public int Y;
     }
 
-    private void Overlay_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    [StructLayout(LayoutKind.Sequential)]
+    private struct LowLevelMouseData
     {
-        if (!_pointerDown)
+        public NativePoint Point;
+        public uint MouseData;
+        public uint Flags;
+        public uint Time;
+        public IntPtr ExtraInfo;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeRect
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern IntPtr SetWindowsHookEx(int idHook, LowLevelMouseProc callback, IntPtr moduleHandle, uint threadId);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool UnhookWindowsHookEx(IntPtr hook);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr CallNextHookEx(IntPtr hook, int code, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetWindowRect(IntPtr handle, out NativeRect rect);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr WindowFromPoint(NativePoint point);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetAncestor(IntPtr handle, uint flags);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Auto)]
+    private static extern IntPtr GetModuleHandle(string? moduleName);
+
+    private void InstallMouseHook()
+    {
+        if (_mouseHook != IntPtr.Zero)
             return;
 
-        _pointerDown = false;
-        if (IsInteractiveSource(e.OriginalSource))
-            return;
+        _mouseHook = SetWindowsHookEx(WhMouseLl, _mouseHookCallback, GetModuleHandle(null), 0);
+        if (_mouseHook == IntPtr.Zero)
+            ShowStatus("Mouse gesture hook could not be installed. Keyboard shortcuts remain available.");
+    }
 
-        ProcessSwipe(e.GetPosition(OverlayRoot));
+    private IntPtr MouseHookCallback(int code, IntPtr wParam, IntPtr lParam)
+    {
+        if (code >= 0 && !Dispatcher.HasShutdownStarted)
+        {
+            var data = Marshal.PtrToStructure<LowLevelMouseData>(lParam);
+            var message = wParam.ToInt32();
+            var screenPoint = new Point(data.Point.X, data.Point.Y);
+            var insideWindow = IsInsideMainWindow(screenPoint);
+
+            if (insideWindow || (message == WmLButtonUp && _mouseGestureDown))
+            {
+                var mouseData = data.MouseData;
+                Dispatcher.BeginInvoke(new Action(() =>
+                    HandleGlobalMouseInput(message, screenPoint, mouseData, insideWindow)));
+            }
+        }
+
+        return CallNextHookEx(_mouseHook, code, wParam, lParam);
+    }
+
+    private bool IsInsideMainWindow(Point screenPoint)
+    {
+        var handle = new WindowInteropHelper(this).Handle;
+        if (handle == IntPtr.Zero || !GetWindowRect(handle, out var rect))
+            return false;
+
+        if (screenPoint.X < rect.Left || screenPoint.X >= rect.Right ||
+            screenPoint.Y < rect.Top || screenPoint.Y >= rect.Bottom)
+            return false;
+
+        // Ignore input when another application or a modal dialog is in front.
+        var overlay = Window.GetWindow(OverlayRoot);
+        var overlayHandle = overlay is null ? IntPtr.Zero : new WindowInteropHelper(overlay).Handle;
+        var foreground = GetForegroundWindow();
+        if (foreground != handle && foreground != overlayHandle)
+            return false;
+
+        var pointedWindow = WindowFromPoint(new NativePoint
+        {
+            X = (int)screenPoint.X,
+            Y = (int)screenPoint.Y
+        });
+
+        return pointedWindow != IntPtr.Zero &&
+               GetAncestor(pointedWindow, GaRootOwner) == GetAncestor(handle, GaRootOwner);
+    }
+
+    private bool IsInteractiveAtScreenPoint(Point screenPoint)
+    {
+        try
+        {
+            var localPoint = OverlayRoot.PointFromScreen(screenPoint);
+
+            // The root overlay does not cover the native window's title-bar area.
+            // Treat points outside the overlay as non-gesture input.
+            if (localPoint.X < 0 || localPoint.Y < 0 ||
+                localPoint.X >= OverlayRoot.ActualWidth ||
+                localPoint.Y >= OverlayRoot.ActualHeight)
+                return true;
+
+            var hit = OverlayRoot.InputHitTest(localPoint);
+            return IsInteractiveSource(hit);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private void HandleGlobalMouseInput(int message, Point screenPoint, uint mouseData, bool insideWindow)
+    {
+        switch (message)
+        {
+            case WmMouseWheel:
+                if (!insideWindow || IsInteractiveAtScreenPoint(screenPoint))
+                    return;
+
+                var wheelDelta = unchecked((short)(mouseData >> 16));
+                if (wheelDelta > 0)
+                    PlayNext();
+                else if (wheelDelta < 0)
+                    PlayPrevious();
+                break;
+
+            case WmLButtonDown:
+                _mouseGestureDown = insideWindow && !IsInteractiveAtScreenPoint(screenPoint);
+                if (_mouseGestureDown)
+                    _mouseGestureStart = screenPoint;
+                break;
+
+            case WmLButtonUp:
+                if (!_mouseGestureDown)
+                    return;
+
+                _mouseGestureDown = false;
+                if (insideWindow)
+                    ProcessSwipe(_mouseGestureStart, screenPoint);
+                break;
+        }
     }
 
     private void Overlay_TouchDown(object sender, TouchEventArgs e)
     {
         if (IsInteractiveSource(e.OriginalSource))
         {
-            _pointerDown = false;
+            _touchGestureDown = false;
             return;
         }
 
-        _pointerStart = e.GetTouchPoint(OverlayRoot).Position;
-        _pointerDown = true;
+        _touchGestureStart = e.GetTouchPoint(OverlayRoot).Position;
+        _touchGestureDown = true;
         e.Handled = true;
     }
 
     private void Overlay_TouchMove(object sender, TouchEventArgs e)
     {
-        if (_pointerDown)
+        if (_touchGestureDown)
             e.Handled = true;
     }
 
     private void Overlay_TouchUp(object sender, TouchEventArgs e)
     {
-        if (!_pointerDown)
+        if (!_touchGestureDown)
             return;
 
-        _pointerDown = false;
+        _touchGestureDown = false;
         if (!IsInteractiveSource(e.OriginalSource))
-            ProcessSwipe(e.GetTouchPoint(OverlayRoot).Position);
+            ProcessSwipe(_touchGestureStart, e.GetTouchPoint(OverlayRoot).Position);
         e.Handled = true;
     }
 
@@ -729,10 +920,10 @@ public partial class MainWindow : Window
         return false;
     }
 
-    private void ProcessSwipe(Point end)
+    private void ProcessSwipe(Point start, Point end)
     {
-        var deltaX = end.X - _pointerStart.X;
-        var deltaY = end.Y - _pointerStart.Y;
+        var deltaX = end.X - start.X;
+        var deltaY = end.Y - start.Y;
 
         if (Math.Abs(deltaX) > Math.Abs(deltaY) * 1.25 && deltaX < -115)
             DeleteCurrentVideo();
@@ -742,24 +933,17 @@ public partial class MainWindow : Window
             PlayPrevious();
     }
 
-    private void Overlay_MouseWheel(object sender, MouseWheelEventArgs e)
-    {
-        if (IsInteractiveSource(e.OriginalSource))
-            return;
-
-        if (e.Delta > 0)
-            PlayNext();
-        else if (e.Delta < 0)
-            PlayPrevious();
-
-        e.Handled = true;
-    }
-
     private void ShowStatus(string message) => StatusText.Text = message;
 
     private void Window_Closing(object? sender, CancelEventArgs e)
     {
         _uiTimer.Stop();
+        if (_mouseHook != IntPtr.Zero)
+        {
+            UnhookWindowsHookEx(_mouseHook);
+            _mouseHook = IntPtr.Zero;
+        }
+
         if (_settings.RememberLastFolder)
             _settingsService.Save(_settings);
 

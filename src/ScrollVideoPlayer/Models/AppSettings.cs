@@ -4,6 +4,8 @@ public sealed class AppSettings
 {
     public string LastFolder { get; set; } = string.Empty;
     public string LastVideo { get; set; } = string.Empty;
+    public int LastVolume { get; set; } = 80;
+    public bool IsMuted { get; set; }
     public bool IncludeSubfolders { get; set; } = true;
     public bool DeletePermanently { get; set; }
     public bool ConfirmBeforeDelete { get; set; }
@@ -17,6 +19,8 @@ public sealed class AppSettings
     {
         LastFolder = LastFolder,
         LastVideo = LastVideo,
+        LastVolume = LastVolume,
+        IsMuted = IsMuted,
         IncludeSubfolders = IncludeSubfolders,
         DeletePermanently = DeletePermanently,
         ConfirmBeforeDelete = ConfirmBeforeDelete,
