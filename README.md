@@ -17,7 +17,7 @@ A Windows desktop player built for browsing a folder as a continuous, swipe-driv
 
 ## Windows support
 
-The application targets **Windows 10 and Windows 11, 64-bit (x64)**. It is built with .NET 10 WPF and LibVLCSharp using the native VLC media engine.
+The application targets **Windows 10 and Windows 11, 64-bit (x64)**. It is built with .NET 9 WPF and LibVLCSharp using the native VLC media engine.
 
 The player recognises common video containers including:
 
@@ -66,7 +66,7 @@ Download and run `ScrollVideoPlayer-Setup.exe` from the Releases page. The insta
 Requirements:
 
 - Windows 10/11 x64
-- .NET 10 SDK
+- .NET 9 SDK (or newer)
 - Internet access during the first build, so NuGet can restore the VLC and LibVLCSharp packages
 
 Run `Build-Portable.bat` from the repository root. It publishes a self-contained build to `dist\ScrollVideoPlayer`.
