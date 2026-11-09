@@ -140,7 +140,7 @@
                             Margin="20,0,20,18" Padding="12,7" CornerRadius="20"
                             Background="#B90D111A" BorderBrush="#30394B" BorderThickness="1">
                         <TextBlock x:Name="StatusText"
-                                   Text="Scroll ↓ next video     ·     Drag & drop videos to play     ·     Swipe ← delete     ·     Space pause"
+                                   Text="Scroll ↓ next video     ·     Drag &amp; drop videos to play     ·     Swipe ← delete     ·     Space pause"
                                    FontSize="11" Foreground="#D5DBE7" />
                     </Border>
                 </Grid>
